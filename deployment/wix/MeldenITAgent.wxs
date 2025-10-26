@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  
+  <Product Id="*" 
+           Name="MeldenIT Agent" 
+           Language="1033" 
+           Version="1.0.0" 
+           Manufacturer="MeldenIT" 
+           UpgradeCode="PUT-GUID-HERE">
+    
+    <Package InstallerVersion="200" 
+             Compressed="yes" 
+             InstallScope="perMachine" 
+             Description="MeldenIT Agent - Snipe-IT Entegrasyonlu Envanter Ajanı" />
+    
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    
+    <!-- Install .NET 8 Runtime if not present -->
+    <PropertyRef Id="WIX_IS_NETFRAMEWORK_80_OR_LATER_INSTALLED" />
+    <Condition Message="This application requires .NET 8.0 Runtime. Please install it first.">
+      <![CDATA[Installed OR WIX_IS_NETFRAMEWORK_80_OR_LATER_INSTALLED]]>
+    </Condition>
+    
+    <!-- Service Installation -->
+    <ServiceInstall Id="MeldenITAgentSvc"
+                    Type="ownProcess"
+                    Name="MeldenITAgentSvc"
+                    DisplayName="MeldenIT Agent Service"
+                    Description="MeldenIT Agent - Snipe-IT Entegrasyonlu Envanter Ajanı"
+                    Start="auto"
+                    Account="LocalSystem"
+                    ErrorControl="normal" />
+    
+    <ServiceControl Id="MeldenITAgentSvc"
+                    Name="MeldenITAgentSvc"
+                    Start="install"
+                    Stop="both"
+                    Remove="uninstall"
+                    Wait="yes" />
+    
+    <!-- Main Application Directory -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="MeldenITFolder" Name="MeldenIT">
+          <Directory Id="AgentFolder" Name="Agent">
+            
+            <!-- Service Executable -->
+            <Component Id="ServiceExecutable" Guid="*">
+              <File Id="MeldenITAgentServiceExe" 
+                    Name="MeldenIT.Agent.Service.exe" 
+                    Source="$(var.MeldenIT.Agent.Service.TargetDir)MeldenIT.Agent.Service.exe" 
+                    KeyPath="yes" />
+            </Component>
+            
+            <!-- Tray Application -->
+            <Component Id="TrayApplication" Guid="*">
+              <File Id="MeldenITAgentTrayExe" 
+                    Name="MeldenIT.Agent.Tray.exe" 
+                    Source="$(var.MeldenIT.Agent.Tray.TargetDir)MeldenIT.Agent.Tray.exe" 
+                    KeyPath="yes" />
+            </Component>
+            
+            <!-- Core Libraries -->
+            <Component Id="CoreLibraries" Guid="*">
+              <File Id="MeldenITAgentCoreDll" 
+                    Name="MeldenIT.Agent.Core.dll" 
+                    Source="$(var.MeldenIT.Agent.Core.TargetDir)MeldenIT.Agent.Core.dll" />
+            </Component>
+            
+            <!-- Configuration Files -->
+            <Component Id="ConfigFiles" Guid="*">
+              <File Id="AgentConfigJson" 
+                    Name="agent.json" 
+                    Source="config\agent.json" />
+            </Component>
+            
+            <!-- Log Directory -->
+            <Directory Id="LogsFolder" Name="logs">
+              <Component Id="LogsDirectory" Guid="*">
+                <CreateFolder />
+                <RemoveFolder Id="LogsFolder" On="uninstall" />
+              </Component>
+            </Directory>
+            
+          </Directory>
+        </Directory>
+      </Directory>
+      
+      <!-- Program Data Directory -->
+      <Directory Id="CommonAppDataFolder">
+        <Directory Id="MeldenITDataFolder" Name="MeldenIT">
+          <Directory Id="AgentDataFolder" Name="Agent">
+            <Component Id="DataDirectory" Guid="*">
+              <CreateFolder />
+              <RemoveFolder Id="AgentDataFolder" On="uninstall" />
+            </Component>
+          </Directory>
+        </Directory>
+      </Directory>
+      
+      <!-- Start Menu -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="MeldenITMenuFolder" Name="MeldenIT">
+          <Directory Id="AgentMenuFolder" Name="Agent">
+            <Component Id="StartMenuShortcuts" Guid="*">
+              <Shortcut Id="TrayAppShortcut" 
+                        Name="MeldenIT Agent" 
+                        Description="MeldenIT Agent Tray Application" 
+                        Target="[#MeldenITAgentTrayExe]" 
+                        WorkingDirectory="AgentFolder" />
+              <RemoveFolder Id="AgentMenuFolder" On="uninstall" />
+              <RemoveFolder Id="MeldenITMenuFolder" On="uninstall" />
+            </Component>
+          </Directory>
+        </Directory>
+      </Directory>
+      
+      <!-- Desktop Shortcut -->
+      <Directory Id="DesktopFolder">
+        <Component Id="DesktopShortcut" Guid="*">
+          <Shortcut Id="DesktopTrayAppShortcut" 
+                    Name="MeldenIT Agent" 
+                    Description="MeldenIT Agent Tray Application" 
+                    Target="[#MeldenITAgentTrayExe]" 
+                    WorkingDirectory="AgentFolder" />
+        </Component>
+      </Directory>
+    </Directory>
+    
+    <!-- Features -->
+    <Feature Id="ProductFeature" Title="MeldenIT Agent" Level="1">
+      <ComponentRef Id="ServiceExecutable" />
+      <ComponentRef Id="TrayApplication" />
+      <ComponentRef Id="CoreLibraries" />
+      <ComponentRef Id="ConfigFiles" />
+      <ComponentRef Id="LogsDirectory" />
+      <ComponentRef Id="DataDirectory" />
+      <ComponentRef Id="StartMenuShortcuts" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+    
+    <!-- Custom Actions for Service Management -->
+    <CustomAction Id="StartService" 
+                  ExeCommand="net start MeldenITAgentSvc" 
+                  Return="check" />
+    
+    <CustomAction Id="StopService" 
+                  ExeCommand="net stop MeldenITAgentSvc" 
+                  Return="ignore" />
+    
+    <!-- Installation Sequence -->
+    <InstallExecuteSequence>
+      <Custom Action="StopService" Before="InstallFiles">NOT Installed</Custom>
+      <Custom Action="StartService" After="InstallFiles">NOT Installed</Custom>
+    </InstallExecuteSequence>
+    
+    <!-- UI -->
+    <UIRef Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+    
+    <!-- Properties for Silent Installation -->
+    <Property Id="API_URL" Value="https://assit.meldencloud.com" />
+    <Property Id="SNIPEIT_URL" Value="https://assit.meldencloud.com" />
+    <Property Id="SITE_CODE" Value="MLDHQ" />
+    
+  </Product>
+</Wix>

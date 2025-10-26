@@ -1,0 +1,13 @@
+{
+  "api_url": "https://assit.meldencloud.com",
+  "snipeit_url": "https://assit.meldencloud.com",
+  "site_code": "MLDHQ",
+  "heartbeat_interval": 15,
+  "delta_sync_interval": 360,
+  "full_sync_time": "03:00",
+  "proxy_enabled": false,
+  "proxy_url": null,
+  "log_level": "Information",
+  "max_retry_attempts": 3,
+  "retry_delay_seconds": 30
+}
